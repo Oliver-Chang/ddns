@@ -1,7 +1,6 @@
 package util
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -9,21 +8,14 @@ import (
 	"fmt"
 )
 
-// Resp Resp
-type Resp struct {
-	Code int    `json:"code"`
-	Msg  string `json:"msg"`
-	Data struct {
-		IP string `json:"ip"`
-	} `json:"data"`
-}
+// 基于 seeip.org 提供的 API 查询当前公共 IP 地址
+const seeip = "https://ip.seeip.org"
 
 // GetIP GetIP
 func GetIP() <-chan string {
 	var (
 		ip chan string
 	)
-
 	ip = make(chan string)
 
 	go func() {
@@ -31,9 +23,8 @@ func GetIP() <-chan string {
 			rsp  *http.Response
 			err  error
 			body []byte
-			resp Resp
 		)
-		rsp, err = http.Get("http://tool.oliverch.com/ip")
+		rsp, err = http.Get(seeip)
 		if err != nil {
 			fmt.Println(err)
 			close(ip)
@@ -46,20 +37,10 @@ func GetIP() <-chan string {
 			close(ip)
 			return
 		}
-		err = json.Unmarshal(body, &resp)
-		if err != nil {
-			fmt.Println(err)
-			close(ip)
-			return
-		}
-		ip <- resp.Data.IP
+		ip <- string(body)
 	}()
-	return ip
-}
 
-// IsIPv4 IsIPv4
-func IsIPv4(address string) bool {
-	return strings.Count(address, ":") < 2
+	return ip
 }
 
 // IsIPv6 IsIPv6
