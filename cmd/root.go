@@ -1,22 +1,13 @@
-// Copyright © 2019 NAME HERE <EMAIL ADDRESS>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package cmd
 
 import (
 	"fmt"
 	"os"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/robfig/cron"
+
+	"github.com/Oliver-Chang/ddns/dns"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -27,21 +18,48 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "ddns",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:   "ddns",
+	Short: "DDNS",
+	Long:  `DDNS`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		var (
+			config *dns.DDNSConfig
+			err    error
+		)
+		config = &dns.DDNSConfig{}
+
+		viper.WatchConfig()
+		viper.OnConfigChange(func(e fsnotify.Event) {
+			config.UID = viper.GetString("uid")
+			config.Token = viper.GetString("token")
+			config.ZoneID = viper.GetString("zone_id")
+			config.DNS = viper.GetString("dns")
+			config.Domain = viper.GetString("domain")
+		})
+		config.UID = viper.GetString("uid")
+		config.Token = viper.GetString("token")
+		config.ZoneID = viper.GetString("zone_id")
+		config.DNS = viper.GetString("dns")
+		config.Domain = viper.GetString("domain")
+		c := cron.New()
+		err = c.AddFunc("@every 10m", func() {
+			ddns := dns.NewDDNS(config)
+			ddns.CreateRecord()
+		})
+		if err != nil {
+			fmt.Println(err)
+		}
+		c.Start()
+		fmt.Println(config.DNS)
+		for {
+
+		}
+	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -51,15 +69,23 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ddns.yaml)")
+	rootCmd.PersistentFlags().StringP("uid", "u", "", "For cloudflare is AuthID, dnspod is token_id")
+	rootCmd.PersistentFlags().StringP("token", "t", "", "For cloudflare is AuthKey, dnspod is token")
+	rootCmd.PersistentFlags().StringP("zone-id", "z", "", "For cloudflare is ZoneID, dnspod is DomainID")
+	rootCmd.PersistentFlags().StringP("class", "c", "", "type of dns")
+	rootCmd.PersistentFlags().StringP("domain", "d", "", "domain")
+	// // rootCmd.MarkPersistentFlagRequired("uid")
+	// // rootCmd.MarkPersistentFlagRequired("token")
+	// // rootCmd.MarkPersistentFlagRequired("zone-id-idin")
+	// // rootCmd.MarkPersistentFlagRequired("class")
+	// // rootCmd.MarkPersistentFlagRequired("domain")
+	viper.BindPFlag("uid", rootCmd.PersistentFlags().Lookup("uid"))
+	viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("token"))
+	viper.BindPFlag("zone_id", rootCmd.PersistentFlags().Lookup("zone-id"))
+	viper.BindPFlag("dns", rootCmd.PersistentFlags().Lookup("class"))
+	viper.BindPFlag("domain", rootCmd.PersistentFlags().Lookup("domain"))
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.

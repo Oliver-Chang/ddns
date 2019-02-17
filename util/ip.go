@@ -32,12 +32,13 @@ func GetIP() <-chan string {
 		}
 		defer rsp.Body.Close()
 		body, err = ioutil.ReadAll(rsp.Body)
+
 		if err != nil {
 			fmt.Println(err)
 			close(ip)
 			return
 		}
-		ip <- string(body)
+		ip <- strings.Replace(string(body), "\n", "", -1)
 	}()
 
 	return ip
