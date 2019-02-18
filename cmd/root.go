@@ -52,7 +52,7 @@ var rootCmd = &cobra.Command{
 		c := cron.New()
 		ipChan := make(chan string, 1)
 		var storeIP *string
-		err = c.AddFunc("@every 5s", func() {
+		err = c.AddFunc("@every 5m", func() {
 		redo:
 			ip, err := util.GetIP()
 			if err != nil {
