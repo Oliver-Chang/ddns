@@ -4,44 +4,32 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-
-	"fmt"
 )
 
 // 基于 seeip.org 提供的 API 查询当前公共 IP 地址
 const seeip = "https://ip.seeip.org"
 
 // GetIP GetIP
-func GetIP() <-chan string {
+func GetIP() (string, error) {
 	var (
-		ip chan string
+		ip   string
+		rsp  *http.Response
+		err  error
+		body []byte
 	)
-	ip = make(chan string)
-
-	go func() {
-		var (
-			rsp  *http.Response
-			err  error
-			body []byte
-		)
-		rsp, err = http.Get(seeip)
-		if err != nil {
-			fmt.Println(err)
-			close(ip)
-			return
-		}
-		defer rsp.Body.Close()
-		body, err = ioutil.ReadAll(rsp.Body)
-
-		if err != nil {
-			fmt.Println(err)
-			close(ip)
-			return
-		}
-		ip <- strings.Replace(string(body), "\n", "", -1)
-	}()
-
-	return ip
+	rsp, err = http.Get(seeip)
+	if err != nil {
+		// logger.Logger.WithError(err).Error()
+		return "", err
+	}
+	defer rsp.Body.Close()
+	body, err = ioutil.ReadAll(rsp.Body)
+	if err != nil {
+		// logger.Logger.WithError(err).Error()
+		return "", err
+	}
+	ip = strings.Replace(string(body), "\n", "", -1)
+	return ip, nil
 }
 
 // IsIPv6 IsIPv6

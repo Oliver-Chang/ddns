@@ -1,13 +1,15 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/fsnotify/fsnotify"
-	"github.com/robfig/cron"
+	"github.com/Oliver-Chang/ddns/util"
+
+	"github.com/Oliver-Chang/ddns/util/logger"
 
 	"github.com/Oliver-Chang/ddns/dns"
+	"github.com/fsnotify/fsnotify"
+	"github.com/robfig/cron"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -30,39 +32,65 @@ var rootCmd = &cobra.Command{
 			err    error
 		)
 		config = &dns.DDNSConfig{}
-
 		viper.WatchConfig()
 		viper.OnConfigChange(func(e fsnotify.Event) {
-			config.UID = viper.GetString("uid")
-			config.Token = viper.GetString("token")
-			config.ZoneID = viper.GetString("zone_id")
-			config.DNS = viper.GetString("dns")
-			config.Domain = viper.GetString("domain")
+			var err error
+			for {
+				err = viper.Unmarshal(config)
+				if err != nil {
+					logger.Logger.WithError(err).Error()
+					continue
+				}
+				break
+			}
 		})
-		config.UID = viper.GetString("uid")
-		config.Token = viper.GetString("token")
-		config.ZoneID = viper.GetString("zone_id")
-		config.DNS = viper.GetString("dns")
-		config.Domain = viper.GetString("domain")
+		err = viper.Unmarshal(config)
+		if err != nil {
+			logger.Logger.WithError(err).Error()
+		}
+		logger.Logger.WithField("config", config).Info()
 		c := cron.New()
-		err = c.AddFunc("@every 10m", func() {
-			ddns := dns.NewDDNS(config)
-			ddns.CreateRecord()
+		ipChan := make(chan string, 1)
+		var storeIP *string
+		err = c.AddFunc("@every 5s", func() {
+		redo:
+			ip, err := util.GetIP()
+			if err != nil {
+				logger.Logger.WithError(err).Error("Get ip err")
+			}
+			logger.Logger.WithField("ipv6", ip).Info()
+			if !util.IsIPv6(ip) {
+				goto redo
+			}
+
+			if storeIP == nil || *storeIP != ip {
+				storeIP = &ip
+				ipChan <- *storeIP
+			}
 		})
 		if err != nil {
-			fmt.Println(err)
+			logger.Logger.Error(err)
+			return
 		}
 		c.Start()
-		fmt.Println(config.DNS)
 		for {
-
+			select {
+			case ip, ok := <-ipChan:
+				if ok {
+					logger.Logger.WithField("ipv6", ip).Info("Process")
+					ddns := dns.NewDDNS(config)
+					ddns.CreateRecord(ip, config.Domain)
+				}
+			}
 		}
+
 	},
 }
 
+// Execute Execute
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		logger.Logger.WithError(err).Error()
 		os.Exit(1)
 	}
 }
@@ -97,7 +125,7 @@ func initConfig() {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			fmt.Println(err)
+			logger.Logger.WithError(err).Error()
 			os.Exit(1)
 		}
 
@@ -110,6 +138,6 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		logger.Logger.Info("Using config file:", viper.ConfigFileUsed())
 	}
 }

@@ -1,11 +1,7 @@
 package dns
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/Oliver-Chang/ddns/dns/cloudflare"
-	"github.com/Oliver-Chang/ddns/util"
 )
 
 // DNSer DNSer
@@ -33,12 +29,10 @@ func NewDDNS(conf *DDNSConfig) *DDNS {
 }
 
 // CreateRecord CreateRecord
-func (d *DDNS) CreateRecord() error {
+func (d *DDNS) CreateRecord(ipv6, domain string) error {
 	var (
 		dns DNSer
-		ip  string
 		err error
-		ok  bool
 	)
 	switch d.config.DNS {
 	case "cloudflare":
@@ -46,16 +40,10 @@ func (d *DDNS) CreateRecord() error {
 		// case "dnspod":
 		// 	dns = dnspod.New(d.config.UID, d.config.ZoneID, d.config.Token)
 	}
-	for {
-		if ip, ok = <-util.GetIP(); ok {
-			if !util.IsIPv6(ip) {
-				return errors.New("ip is not ipv6")
-			}
-			fmt.Println(ip)
-			err = dns.CreateRecord(ip, d.config.Domain)
-			// return errors.New("channel error")
-			return err
-		}
 
+	err = dns.CreateRecord(ipv6, domain)
+	if err != nil {
+		return err
 	}
+	return nil
 }
