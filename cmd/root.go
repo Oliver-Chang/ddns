@@ -3,13 +3,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/Oliver-Chang/ddns/util"
-
 	"github.com/Oliver-Chang/ddns/util/logger"
-
-	"github.com/Oliver-Chang/ddns/dns"
-	"github.com/fsnotify/fsnotify"
-	"github.com/robfig/cron"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -27,62 +21,6 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		var (
-			config *dns.DDNSConfig
-			err    error
-		)
-		config = &dns.DDNSConfig{}
-		viper.WatchConfig()
-		viper.OnConfigChange(func(e fsnotify.Event) {
-			var err error
-			for {
-				err = viper.Unmarshal(config)
-				if err != nil {
-					logger.Logger.WithError(err).Error()
-					continue
-				}
-				break
-			}
-		})
-		err = viper.Unmarshal(config)
-		if err != nil {
-			logger.Logger.WithError(err).Error()
-		}
-		logger.Logger.WithField("config", config).Info()
-		c := cron.New()
-		ipChan := make(chan string, 1)
-		var storeIP *string
-		err = c.AddFunc("@every 5m", func() {
-		redo:
-			ip, err := util.GetIP()
-			if err != nil {
-				logger.Logger.WithError(err).Error("Get ip err")
-			}
-			logger.Logger.WithField("ipv6", ip).Info()
-			if !util.IsIPv6(ip) {
-				goto redo
-			}
-
-			if storeIP == nil || *storeIP != ip {
-				storeIP = &ip
-				ipChan <- *storeIP
-			}
-		})
-		if err != nil {
-			logger.Logger.Error(err)
-			return
-		}
-		c.Start()
-		for {
-			select {
-			case ip, ok := <-ipChan:
-				if ok {
-					logger.Logger.WithField("ipv6", ip).Info("Process")
-					ddns := dns.NewDDNS(config)
-					ddns.CreateRecord(ip, config.Domain)
-				}
-			}
-		}
 
 	},
 }

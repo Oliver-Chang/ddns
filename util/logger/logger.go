@@ -1,11 +1,22 @@
 package logger
 
 import (
-	"github.com/sirupsen/logrus"
+	"fmt"
+
+	"go.uber.org/zap"
 )
 
-// Logger single log
-var Logger = logrus.New()
+// Logger Logger
+var (
+	logger *zap.Logger
+)
 
 func init() {
+	config := zap.NewProductionConfig()
+	Logger, err := config.Build()
+	Logger.Info("asd")
+	if err != nil {
+		fmt.Println(err)
+	}
+
 }
