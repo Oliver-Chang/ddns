@@ -4,8 +4,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-
-	"github.com/Oliver-Chang/ddns/util/logger"
 )
 
 // 基于 seeip.org 提供的 API 查询当前公共 IP 地址
@@ -21,7 +19,6 @@ func GetIP() (string, error) {
 	)
 	rsp, err = http.Get(seeip)
 	if err != nil {
-		logger.Logger.WithError(err).Error()
 		return "", err
 	}
 	defer rsp.Body.Close()
