@@ -19,5 +19,6 @@
 ### Go Patch ###
 /vendor/
 /Godeps/
+ddns
 
 # End of https://www.gitignore.io/api/go
