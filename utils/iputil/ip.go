@@ -1,4 +1,4 @@
-package util
+package iputil
 
 import (
 	"io/ioutil"
@@ -19,7 +19,6 @@ func GetIP() (string, error) {
 	)
 	rsp, err = http.Get(seeip)
 	if err != nil {
-		// logger.Logger.WithError(err).Error()
 		return "", err
 	}
 	defer rsp.Body.Close()
