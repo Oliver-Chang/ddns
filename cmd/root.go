@@ -1,15 +1,12 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/Oliver-Chang/ddns/utils/logger"
 	"go.uber.org/zap"
 
-	"github.com/fsnotify/fsnotify"
-
-	"github.com/Oliver-Chang/ddns/ddns"
+	"github.com/Oliver-Chang/ddns/daemon"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,17 +23,20 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg := ddns.Config{}
+		cfg := daemon.Config{}
 		viper.WatchConfig()
-		viper.OnConfigChange(func(in fsnotify.Event) {
-			viper.Unmarshal(&cfg)
-		})
+		// viper.OnConfigChange(func(in fsnotify.Event) {
+		// 	viper.Unmarshal(&cfg)
+		// 	logger.Logger.Info("cfg file have new change")
+		// })
 		if err := viper.Unmarshal(&cfg); err != nil {
 			logger.Logger.Error("viper config unmarshal failed", zap.NamedError("config", err))
+			return
 		}
-		logger.Logger.Info(fmt.Sprintf("%+v", cfg))
-		myDDNS := ddns.New(cfg)
-		myDDNS.Deamon()
+		// logger.Logger.Info(fmt.Sprintf("%+v", cfg))
+		d := daemon.New(&cfg)
+		// cfgReflesh := make(chan bool)
+		d.Daemon()
 	},
 }
 
@@ -91,6 +91,6 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		// logger.Logger.Info("Using config file:", viper.ConfigFileUsed())
+		logger.Logger.Info("Using config file:", zap.String("config_file", viper.ConfigFileUsed()))
 	}
 }
