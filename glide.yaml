@@ -4,3 +4,5 @@ import:
 - package: github.com/spf13/cobra
 - package: github.com/spf13/viper
 - package: go.uber.org/zap
+- package: github.com/cloudflare/cloudflare-go
+

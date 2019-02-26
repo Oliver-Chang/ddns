@@ -1,10 +1,15 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/Oliver-Chang/ddns/util/logger"
+	"github.com/Oliver-Chang/ddns/utils/logger"
+	"go.uber.org/zap"
 
+	"github.com/fsnotify/fsnotify"
+
+	"github.com/Oliver-Chang/ddns/ddns"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,14 +26,24 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-
+		cfg := ddns.Config{}
+		viper.WatchConfig()
+		viper.OnConfigChange(func(in fsnotify.Event) {
+			viper.Unmarshal(&cfg)
+		})
+		if err := viper.Unmarshal(&cfg); err != nil {
+			logger.Logger.Error("viper config unmarshal failed", zap.NamedError("config", err))
+		}
+		logger.Logger.Info(fmt.Sprintf("%+v", cfg))
+		myDDNS := ddns.New(cfg)
+		myDDNS.Deamon()
 	},
 }
 
 // Execute Execute
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		logger.Logger.WithError(err).Error()
+		// logger.Logger.WithError(err).Error()
 		os.Exit(1)
 	}
 }
@@ -63,7 +78,7 @@ func initConfig() {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			logger.Logger.WithError(err).Error()
+			// logger.Logger.WithError(err).Error()
 			os.Exit(1)
 		}
 
@@ -76,6 +91,6 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		logger.Logger.Info("Using config file:", viper.ConfigFileUsed())
+		// logger.Logger.Info("Using config file:", viper.ConfigFileUsed())
 	}
 }

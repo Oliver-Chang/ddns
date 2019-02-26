@@ -7,16 +7,14 @@ import (
 )
 
 // Logger Logger
-var (
-	logger *zap.Logger
-)
+var Logger *zap.Logger
 
 func init() {
-	config := zap.NewProductionConfig()
-	Logger, err := config.Build()
-	Logger.Info("asd")
+	var err error
+
+	cfg := zap.NewProductionConfig()
+	Logger, err = cfg.Build()
 	if err != nil {
 		fmt.Println(err)
 	}
-
 }

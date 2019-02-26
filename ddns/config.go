@@ -4,5 +4,5 @@ package ddns
 type Config struct {
 	AuthEmail string
 	AuthKey   string
-	Domain    string
+	SubDomain string
 }
