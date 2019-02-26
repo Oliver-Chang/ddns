@@ -10,4 +10,4 @@ AuthKey="xxx"
 Subdomain="xxx.xxx.xxx"
 ```
 
-然后启动该程序
+然后启动该程序。
