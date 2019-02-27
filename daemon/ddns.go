@@ -37,7 +37,7 @@ func New(cfg *Config) *DDNS {
 func (d *DDNS) Daemon() {
 	// schedTime := 8 * time.Minute
 	// will pre 8m fetch ip address
-	ticker := time.NewTicker(8 * time.Second)
+	ticker := time.NewTicker(8 * time.Minute)
 
 	for {
 		select {
@@ -52,13 +52,15 @@ func (d *DDNS) Daemon() {
 				d.ip = ipv6
 			}
 		case <-ticker.C:
-			d.FetchIPv6()
+			if err := d.FetchIPv6(); err != nil {
+				logger.Logger.Error("fetch ipv6 address failed", zap.NamedError("fetch_error", err))
+			}
 		}
 	}
 }
 
 // FetchIPv6  FetchIPv6
-func (d *DDNS) FetchIPv6() {
+func (d *DDNS) FetchIPv6() error {
 	ctx, cancle := context.WithTimeout(context.Background(), 2*time.Minute)
 	go func(ctx context.Context) {
 		ipv6 := iputil.GetIPv6()
@@ -66,6 +68,10 @@ func (d *DDNS) FetchIPv6() {
 		d.ipChan <- ipv6
 	}(ctx)
 	defer cancle()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *DDNS) updateRecord(ipv6 string) error {

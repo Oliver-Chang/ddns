@@ -37,8 +37,9 @@ var rootCmd = &cobra.Command{
 		viper.OnConfigChange(func(in fsnotify.Event) {
 			viper.Unmarshal(&cfg)
 			logger.Logger.Info("cfg file have new change")
-			d.FetchIPv6()
-
+			if err := d.FetchIPv6(); err != nil {
+				logger.Logger.Error("fetch ipv6 address failed", zap.NamedError("fetch_error", err))
+			}
 		})
 		d.Daemon()
 	},
