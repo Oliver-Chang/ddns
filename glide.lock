@@ -1,5 +1,5 @@
 hash: 59cb3246c243cf317d6adfc5d79fcb340005250856260a4700465e4bf917f002
-updated: 2019-02-27T14:47:43.197053674+08:00
+updated: 2019-02-27T15:40:28.927149718+08:00
 imports:
 - name: github.com/cloudflare/cloudflare-go
   version: 9837a599c0ba49ff8208dd679b4500e8ece407a5
