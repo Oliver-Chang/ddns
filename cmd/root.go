@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/Oliver-Chang/ddns/utils/logger"
+	"github.com/fsnotify/fsnotify"
 	"go.uber.org/zap"
 
 	"github.com/Oliver-Chang/ddns/daemon"
@@ -25,10 +26,7 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := daemon.Config{}
 		viper.WatchConfig()
-		// viper.OnConfigChange(func(in fsnotify.Event) {
-		// 	viper.Unmarshal(&cfg)
-		// 	logger.Logger.Info("cfg file have new change")
-		// })
+
 		if err := viper.Unmarshal(&cfg); err != nil {
 			logger.Logger.Error("viper config unmarshal failed", zap.NamedError("config", err))
 			return
@@ -36,6 +34,12 @@ var rootCmd = &cobra.Command{
 		// logger.Logger.Info(fmt.Sprintf("%+v", cfg))
 		d := daemon.New(&cfg)
 		// cfgReflesh := make(chan bool)
+		viper.OnConfigChange(func(in fsnotify.Event) {
+			viper.Unmarshal(&cfg)
+			logger.Logger.Info("cfg file have new change")
+			d.FetchIPv6()
+
+		})
 		d.Daemon()
 	},
 }

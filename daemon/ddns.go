@@ -1,43 +1,47 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/Oliver-Chang/ddns/utils/iputil"
 
 	cloudflare "github.com/cloudflare/cloudflare-go"
 
 	"go.uber.org/zap"
 
 	"github.com/Oliver-Chang/ddns/utils/logger"
-
-	"github.com/Oliver-Chang/ddns/utils/iputil"
 )
 
 // DDNS ddns struct
 type DDNS struct {
 	ip     string
 	config *Config
+	ipChan chan string
+	// ticker
 }
 
 // New DDNS
 func New(cfg *Config) *DDNS {
+	ipChan := make(chan string)
 	return &DDNS{
 		config: cfg,
+		ipChan: ipChan,
 	}
 }
 
 // Daemon Daemon
 func (d *DDNS) Daemon() {
-	ipChan := make(chan string)
-	schedTime := 8 * time.Minute
+	// schedTime := 8 * time.Minute
 	// will pre 8m fetch ip address
-	go d.fetchLatestIPv6(ipChan, schedTime)
+	ticker := time.NewTicker(8 * time.Second)
+
 	for {
 		select {
-		case ipv6, ok := <-ipChan:
+		case ipv6, ok := <-d.ipChan:
 			if ok {
 				logger.Logger.Info("will update dns record", zap.String("ipv6", ipv6))
 				err := d.updateRecord(ipv6)
@@ -47,8 +51,21 @@ func (d *DDNS) Daemon() {
 				logger.Logger.Info("update dns record success")
 				d.ip = ipv6
 			}
+		case <-ticker.C:
+			d.FetchIPv6()
 		}
 	}
+}
+
+// FetchIPv6  FetchIPv6
+func (d *DDNS) FetchIPv6() {
+	ctx, cancle := context.WithTimeout(context.Background(), 2*time.Minute)
+	go func(ctx context.Context) {
+		ipv6 := iputil.GetIPv6()
+		logger.Logger.Info("success get ipv6 address", zap.String("ipv6", ipv6))
+		d.ipChan <- ipv6
+	}(ctx)
+	defer cancle()
 }
 
 func (d *DDNS) updateRecord(ipv6 string) error {
@@ -70,7 +87,7 @@ func (d *DDNS) updateRecord(ipv6 string) error {
 	if err != nil {
 		return err
 	}
-	records, err = api.DNSRecords(zoneID, cloudflare.DNSRecord{Name: subdomain})
+	records, err = api.DNSRecords(zoneID, cloudflare.DNSRecord{Name: subdomain, Type: "AAAA"})
 	if err != nil {
 		return err
 	}
@@ -94,52 +111,21 @@ func (d *DDNS) updateRecord(ipv6 string) error {
 		}
 		logger.Logger.Info("create dns record success", zap.String("create_resp", fmt.Sprintf("%+v", resp)))
 		return nil
-		// finally update record
+		// finally have a record with subdomain update record content
 	} else {
-		recordID := records[0].ID
+		record := records[0]
+		if recordContent := record.Content; recordContent == ipv6 {
+			logger.Logger.Info("record content have not change, should not update", zap.String("ipv6", ipv6), zap.String("content", recordContent))
+			return nil
+		}
+		recordID := record.ID
+		record.Content = ipv6
 		logger.Logger.Info("update subdomain record")
-		err := api.UpdateDNSRecord(zoneID, recordID,
-			cloudflare.DNSRecord{
-				Content: ipv6,
-			})
+		err := api.UpdateDNSRecord(zoneID, recordID, record)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
 
-}
-
-// fetchLatestIPv6 每隔一段时间获取最新且更改过的 ipv6 地址
-func (d *DDNS) fetchLatestIPv6(ipSender chan string, sleepTime time.Duration) {
-	var (
-		ip    string
-		oldIP string
-		err   error
-	)
-getip:
-	oldIP = d.ip
-	for i := 0; i < 3; i++ {
-		ip, err = iputil.GetIP()
-		if err != nil {
-			t := time.Duration(1<<uint32(rand.Intn(4))) * time.Second
-			logger.Logger.Error("get ip address error", zap.NamedError("get_ip", err), zap.Duration("sleep_time", t))
-			time.Sleep(t)
-			continue
-		}
-	}
-	if !iputil.IsIPv6(ip) {
-		t := time.Duration(1<<uint32(rand.Intn(5))) * time.Second
-		logger.Logger.Error("ip address not ipv6", zap.String("ip", ip), zap.Duration("sleep_time", t))
-		time.Sleep(t)
-		goto getip
-	}
-	if ip != oldIP {
-		ipSender <- ip
-
-	} else {
-		logger.Logger.Info("ip address is not change", zap.String("ip", ip), zap.String("old_ip", oldIP))
-	}
-	time.Sleep(sleepTime)
-	goto getip
 }

@@ -2,8 +2,10 @@ package iputil
 
 import (
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // 基于 seeip.org 提供的 API 查询当前公共 IP 地址
@@ -34,4 +36,27 @@ func GetIP() (string, error) {
 // IsIPv6 IsIPv6
 func IsIPv6(address string) bool {
 	return strings.Count(address, ":") >= 2
+}
+
+// GetIPv6 每隔一段时间获取最新且更改过的 ipv6 地址
+func GetIPv6() string {
+	var (
+		ip  string
+		err error
+	)
+getip:
+	for i := 0; i < 3; i++ {
+		ip, err = GetIP()
+		if err != nil {
+			t := time.Duration(1<<uint32(rand.Intn(4))) * time.Second
+			time.Sleep(t)
+			continue
+		}
+	}
+	if !IsIPv6(ip) {
+		t := time.Duration(1<<uint32(rand.Intn(5))) * time.Second
+		time.Sleep(t)
+		goto getip
+	}
+	return ip
 }
