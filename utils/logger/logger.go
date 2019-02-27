@@ -1,20 +1,15 @@
 package logger
 
 import (
-	"fmt"
+	"os"
 
-	"go.uber.org/zap"
+	"github.com/rs/zerolog"
 )
 
 // Logger Logger
-var Logger *zap.Logger
+var Logger *zerolog.Logger
 
 func init() {
-	var err error
-
-	cfg := zap.NewProductionConfig()
-	Logger, err = cfg.Build()
-	if err != nil {
-		fmt.Println(err)
-	}
+	log := zerolog.New(os.Stdout)
+	Logger = &log
 }

@@ -11,8 +11,6 @@ import (
 
 	cloudflare "github.com/cloudflare/cloudflare-go"
 
-	"go.uber.org/zap"
-
 	"github.com/Oliver-Chang/ddns/utils/logger"
 )
 
@@ -43,17 +41,17 @@ func (d *DDNS) Daemon() {
 		select {
 		case ipv6, ok := <-d.ipChan:
 			if ok {
-				logger.Logger.Info("will update dns record", zap.String("ipv6", ipv6))
+				logger.Logger.Info().Str("ipv6", ipv6).Msg("will update dns record")
 				err := d.updateRecord(ipv6)
 				if err != nil {
-					logger.Logger.Error("update record failed", zap.NamedError("update_error", err))
+					logger.Logger.Error().Err(err).Msg("update record failed")
 				}
-				logger.Logger.Info("update dns record success")
+				logger.Logger.Info().Msg("update dns record success")
 				d.ip = ipv6
 			}
 		case <-ticker.C:
 			if err := d.FetchIPv6(); err != nil {
-				logger.Logger.Error("fetch ipv6 address failed", zap.NamedError("fetch_error", err))
+				logger.Logger.Error().Err(err).Msg("fetch ipv6 address failed")
 			}
 		}
 	}
@@ -64,7 +62,7 @@ func (d *DDNS) FetchIPv6() error {
 	ctx, cancle := context.WithTimeout(context.Background(), 2*time.Minute)
 	go func(ctx context.Context) {
 		ipv6 := iputil.GetIPv6()
-		logger.Logger.Info("success get ipv6 address", zap.String("ipv6", ipv6))
+		logger.Logger.Info().Str("ipv6", ipv6).Msg("success fetch ipv6 address")
 		d.ipChan <- ipv6
 	}(ctx)
 	defer cancle()
@@ -103,7 +101,7 @@ func (d *DDNS) updateRecord(ipv6 string) error {
 		return errors.New("subname record len > 1, please check it")
 		// recordLen == 0 没有对应 subdomain record， 创建一个。
 	} else if recordLen == 0 {
-		logger.Logger.Info("no this subdomain record, it will create it")
+		logger.Logger.Info().Msg("create subdomain record")
 		resp, err := api.CreateDNSRecord(zoneID,
 			cloudflare.DNSRecord{
 				Type:     "AAAA",
@@ -115,22 +113,22 @@ func (d *DDNS) updateRecord(ipv6 string) error {
 		if err != nil {
 			return err
 		}
-		logger.Logger.Info("create dns record success", zap.String("create_resp", fmt.Sprintf("%+v", resp)))
+		logger.Logger.Info().Str("create_record", fmt.Sprintf("%+v", resp)).Msg("create dns record success")
 		return nil
 		// finally have a record with subdomain update record content
 	} else {
 		record := records[0]
 		if recordContent := record.Content; recordContent == ipv6 {
-			logger.Logger.Info("record content have not change, should not update", zap.String("ipv6", ipv6), zap.String("content", recordContent))
+			logger.Logger.Info().Str("ipv6", ipv6).Str("content", recordContent).Msg("record content have not change, should not update")
 			return nil
 		}
 		recordID := record.ID
 		record.Content = ipv6
-		logger.Logger.Info("update subdomain record")
 		err := api.UpdateDNSRecord(zoneID, recordID, record)
 		if err != nil {
 			return err
 		}
+		logger.Logger.Info().Msg("update subdomain record")
 		return nil
 	}
 

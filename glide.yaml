@@ -1,8 +1,8 @@
 package: github.com/Oliver-Chang/ddns
 import:
+- package: github.com/cloudflare/cloudflare-go
+- package: github.com/fsnotify/fsnotify
 - package: github.com/mitchellh/go-homedir
+- package: github.com/rs/zerolog
 - package: github.com/spf13/cobra
 - package: github.com/spf13/viper
-- package: go.uber.org/zap
-- package: github.com/cloudflare/cloudflare-go
-

@@ -5,7 +5,6 @@ import (
 
 	"github.com/Oliver-Chang/ddns/utils/logger"
 	"github.com/fsnotify/fsnotify"
-	"go.uber.org/zap"
 
 	"github.com/Oliver-Chang/ddns/daemon"
 	homedir "github.com/mitchellh/go-homedir"
@@ -28,7 +27,7 @@ var rootCmd = &cobra.Command{
 		viper.WatchConfig()
 
 		if err := viper.Unmarshal(&cfg); err != nil {
-			logger.Logger.Error("viper config unmarshal failed", zap.NamedError("config", err))
+			logger.Logger.Error().Err(err).Msg("viper config unmarshal failed")
 			return
 		}
 		// logger.Logger.Info(fmt.Sprintf("%+v", cfg))
@@ -36,9 +35,9 @@ var rootCmd = &cobra.Command{
 		// cfgReflesh := make(chan bool)
 		viper.OnConfigChange(func(in fsnotify.Event) {
 			viper.Unmarshal(&cfg)
-			logger.Logger.Info("cfg file have new change")
+			logger.Logger.Info().Msg("cfg file have new change")
 			if err := d.FetchIPv6(); err != nil {
-				logger.Logger.Error("fetch ipv6 address failed", zap.NamedError("fetch_error", err))
+				logger.Logger.Error().Err(err).Msg("fetch ipv6 address failed")
 			}
 		})
 		d.Daemon()
@@ -96,6 +95,6 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		logger.Logger.Info("Using config file:", zap.String("config_file", viper.ConfigFileUsed()))
+		logger.Logger.Info().Str("config_file", viper.ConfigFileUsed()).Msg("")
 	}
 }
