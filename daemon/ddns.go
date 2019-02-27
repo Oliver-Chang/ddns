@@ -36,7 +36,9 @@ func (d *DDNS) Daemon() {
 	// schedTime := 8 * time.Minute
 	// will pre 8m fetch ip address
 	ticker := time.NewTicker(8 * time.Minute)
-
+	if err := d.FetchIPv6(); err != nil {
+		logger.Logger.Error().Err(err).Msg("first fetch ip address failed")
+	}
 	for {
 		select {
 		case ipv6, ok := <-d.ipChan:
